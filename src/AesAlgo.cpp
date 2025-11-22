@@ -3,7 +3,7 @@
 
 // Nk = 4: Number of 32-bit words in the key for AES-128
 // Nr = 10: Number of rounds for AES-128
-AesAlgo::AesAlgo(): Nk(4), Nr(10) {}
+AesAlgo::AesAlgo(bool gf  ): Nk(4), Nr(10), gf_enable(gf) {}
 
 void AesAlgo::CheckLength(uint16_t len)
 {
@@ -18,7 +18,7 @@ uint8_t AesAlgo::multiply_gf256(uint8_t a, uint8_t b) {
     uint8_t result = 0;
     uint8_t temp_b = b;
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8  && b ; i++){
         if (temp_b & 0x01) { // If the LSB of temp_b is 1, add 'a' to the result
             result ^= a;
         }
@@ -225,7 +225,7 @@ uint8_t AesAlgo::xtime(uint8_t b) // multiply on x
 void AesAlgo::MixColumns(std::array<std::array<uint8_t, Nb>, 4> &state)
 {
 	// Using precomputed Galois Field multiplication tables for efficiency
-#if defined(USE_GFMUL_TABLE)
+if (!gf_enable)
 	{
 
 		std::array<std::array<uint8_t, Nb>, 4> temp_state{};
@@ -249,7 +249,7 @@ void AesAlgo::MixColumns(std::array<std::array<uint8_t, Nb>, 4> &state)
 			state[i] = temp_state[i];
 		}
 	}
-#else
+else
 	{
 		// Same accumulation style as the table-based path, but using multiply_gf256
 		std::array<std::array<uint8_t, Nb>, 4> temp_state{};
@@ -274,7 +274,6 @@ void AesAlgo::MixColumns(std::array<std::array<uint8_t, Nb>, 4> &state)
 			state[i] = temp_state[i];
 		}
 	}
-#endif
 }
 
 /**

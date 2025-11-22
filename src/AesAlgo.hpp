@@ -11,9 +11,10 @@
 #include <cstdint>
 #include <cstddef>
 
+
 class AesAlgo {
 public:
-	explicit AesAlgo();
+	explicit AesAlgo(bool gf = false);
 
 	std::vector<unsigned char> EncryptECB(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key);
@@ -45,6 +46,7 @@ private:
 
 	uint16_t Nk;
 	uint16_t Nr;
+	bool gf_enable;
 
 	// void SubBytes(std::array<std::array<uint8_t, Nb>, 4> &state);
 	void SubBytes(std::array<std::array<uint8_t, Nb>, 4> &state);

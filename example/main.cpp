@@ -41,14 +41,14 @@ int speedTest()
 
     std::vector<uint8_t> plain = getRandomPlain(plainLength);
 
-    AesAlgo aes;
+    AesAlgo aes(true);
     unsigned long start = getMicroseconds();
     std::vector<uint8_t> out = aes.EncryptECB(plain, key);
     unsigned long delta = getMicroseconds() - start;
 
     double speed = (double)megabytesCount / delta * MICROSECONDS;
 
-    printf("%.2f Mb/s\n", speed);
+    printf("%.2f Mb/s time= %lld, \n", speed,delta);
 
     return 0;
 }
