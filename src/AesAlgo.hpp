@@ -14,8 +14,7 @@
 
 class AesAlgo {
 public:
-	explicit AesAlgo(bool gf = false);
-
+	explicit AesAlgo(bool gf_enabled = false, bool padding_enabled = false);
 	std::vector<unsigned char> EncryptECB(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key);
 
@@ -46,7 +45,9 @@ private:
 
 	uint16_t Nk;
 	uint16_t Nr;
-	bool gf_enable;
+	bool _gf_enabled;
+	bool _padding_enabled;
+
 
 	// void SubBytes(std::array<std::array<uint8_t, Nb>, 4> &state);
 	void SubBytes(std::array<std::array<uint8_t, Nb>, 4> &state);
@@ -81,6 +82,8 @@ private:
 				  std::vector<uint8_t> &c);
 
 	void Rcon(std::vector<uint8_t> &a, uint16_t n);
+
+	void PadInputBlock(std::vector<uint8_t>& in);
 
 	void CheckLength(uint16_t len);
 	

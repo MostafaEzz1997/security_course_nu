@@ -3,14 +3,30 @@
 
 // Nk = 4: Number of 32-bit words in the key for AES-128
 // Nr = 10: Number of rounds for AES-128
-AesAlgo::AesAlgo(bool gf  ): Nk(4), Nr(10), gf_enable(gf) {}
+AesAlgo::AesAlgo(bool gf_enabled, bool padding_enabled): 
+	Nk(4), 
+	Nr(10), 
+	_gf_enabled(gf_enabled), 
+	_padding_enabled(padding_enabled)
+{
+}
+
+void AesAlgo::PadInputBlock(std::vector<uint8_t>& in)
+{
+	size_t remainder = in.size() % blockBytesLen;
+    if (remainder != 0) {
+        size_t padding_needed = blockBytesLen - remainder;
+        in.insert(in.end(), padding_needed, 0xFF);
+    }
+}
 
 void AesAlgo::CheckLength(uint16_t len)
 {
 	if (len % blockBytesLen != 0)
 	{
-		throw std::length_error("Plaintext length must be divisible by " +
-								std::to_string(blockBytesLen));
+		// throw std::length_error("Plaintext length must be divisible by " +
+		// 						std::to_string(blockBytesLen));
+		std::cout << "Plaintext length must be divisible by " << blockBytesLen << std::endl;
 	}
 }
 
@@ -226,7 +242,7 @@ void AesAlgo::MixColumns(std::array<std::array<uint8_t, Nb>, 4> &state)
 {
 	std::array<std::array<uint8_t, Nb>, 4> temp_state{};
 	// Using precomputed Galois Field multiplication tables for efficiency
-	if (!gf_enable)
+	if (!_gf_enabled)
 	{
 		for (size_t i = 0; i < 4; ++i)
 		{
@@ -516,7 +532,14 @@ std::vector<uint8_t> AesAlgo::EncryptECB(std::vector<uint8_t> in,
 										 std::vector<uint8_t> key)
 {
 	uint16_t inLen = in.size();
+if (_padding_enabled != true)
+{
 	CheckLength(inLen);
+}
+else
+{
+	PadInputBlock(in);
+}
 	std::vector<uint8_t> out;
 	std::vector<uint8_t> roundKeys;
 	KeyExpansion(key, roundKeys);
@@ -571,7 +594,14 @@ std::vector<uint8_t> AesAlgo::EncryptCBC(std::vector<uint8_t> in,
 										 std::vector<uint8_t> iv)
 {
 	uint16_t inLen = in.size();
+if (_padding_enabled != true)
+{
 	CheckLength(inLen);
+}
+else
+{
+	PadInputBlock(in);
+}
 	std::vector<uint8_t> out;
 	std::vector<uint8_t> block = iv;
 	block.resize(blockBytesLen);
@@ -633,7 +663,14 @@ std::vector<uint8_t> AesAlgo::EncryptCFB(std::vector<uint8_t> in,
 										 std::vector<uint8_t> iv)
 {
 	uint16_t inLen = in.size();
+if (_padding_enabled != true)
+{
 	CheckLength(inLen);
+}
+else
+{
+	PadInputBlock(in);
+}
 	std::vector<uint8_t> out;
 	std::vector<uint8_t> block = iv;
 	block.resize(blockBytesLen);

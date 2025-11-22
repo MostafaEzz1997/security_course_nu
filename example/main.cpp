@@ -90,6 +90,35 @@ void EncryptOneBlockECB() {
     }
 }
 
+void EncryptUnalignedBlockECB() {
+    AesAlgo aes(false, true);
+
+    std::vector<uint8_t> plain = {
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,0x55
+    };
+    
+    std::vector<uint8_t> key = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
+    };
+    
+    std::vector<uint8_t> right = {
+        0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 
+        0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5, 0x5a, 
+        0xce, 0x06, 0xb8, 0x47, 0xa0, 0xc5, 0xbb, 0xfc, 
+        0x54, 0x80, 0xc9, 0xee, 0x0c, 0xd0, 0xde, 0xc4
+    };
+
+    std::vector<uint8_t>out = aes.EncryptECB(plain, key);
+
+    if (out == right) {
+        std::cout << "Encryption successful!" << std::endl;
+    } else {
+        std::cout << "Mismatch in encrypted output!" << std::endl;
+    }
+}
+
 void EncryptDecryptOneBlockECB() {
     AesAlgo aes;
 
@@ -288,17 +317,20 @@ void DecryptTwoBlocksCFB() {
 
 int main(int argc, char **argv)
 {
-    // EncryptOneBlockECB();
-    // EncryptDecryptOneBlockECB();
-    // EncryptDecryptTwoBlockECB();
 
-    // EncryptTwoBlockCBC();
-    // DecryptTwoBlockCBC();
+    EncryptOneBlockECB();
+    EncryptUnalignedBlockECB();
 
-    // EncryptTwoBlocksCFB();
-    // DecryptTwoBlocksCFB();
+    EncryptDecryptOneBlockECB();
+    EncryptDecryptTwoBlockECB();
 
+    EncryptTwoBlockCBC();
+    DecryptTwoBlockCBC();
+
+    EncryptTwoBlocksCFB();
+    DecryptTwoBlocksCFB();
+ 
     speedTest();
-
+    
     return 0;
 }
