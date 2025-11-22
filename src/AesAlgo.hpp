@@ -12,31 +12,87 @@
 #include <cstddef>
 
 
+/**
+ * @class AesAlgo
+ * @brief Implements AES encryption and decryption algorithms.
+ *
+ * Provides support for AES in ECB, CBC, and CFB modes.
+ * Includes optional Galois Field optimizations and padding.
+ */
 class AesAlgo {
 public:
+    /**
+     * @brief Constructs an AES algorithm instance.
+     * @param gf_enabled Enable Galois Field optimizations for MixColumns.
+     * @param padding_enabled Enable padding for input blocks.
+     */
 	explicit AesAlgo(bool gf_enabled = false, bool padding_enabled = false);
+    /**
+     * @brief Encrypts data using AES in ECB mode.
+     * @param in Plaintext data.
+     * @param key Encryption key.
+     * @return Encrypted ciphertext.
+     */
 	std::vector<unsigned char> EncryptECB(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key);
 
+    /**
+     * @brief Decrypts data using AES in ECB mode.
+     * @param in Ciphertext data.
+     * @param key Decryption key.
+     * @return Decrypted plaintext.
+     */
 	std::vector<unsigned char> DecryptECB(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key);
 
+    /**
+     * @brief Encrypts data using AES in CBC mode.
+     * @param in Plaintext data.
+     * @param key Encryption key.
+     * @param iv Initialization vector.
+     * @return Encrypted ciphertext.
+     */
 	std::vector<unsigned char> EncryptCBC(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key,
 										  std::vector<unsigned char> iv);
 
+    /**
+     * @brief Decrypts data using AES in CBC mode.
+     * @param in Ciphertext data.
+     * @param key Decryption key.
+     * @param iv Initialization vector.
+     * @return Decrypted plaintext.
+     */
 	std::vector<unsigned char> DecryptCBC(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key,
 										  std::vector<unsigned char> iv);
 
+    /**
+     * @brief Encrypts data using AES in CFB mode.
+     * @param in Plaintext data.
+     * @param key Encryption key.
+     * @param iv Initialization vector.
+     * @return Encrypted ciphertext.
+     */
 	std::vector<unsigned char> EncryptCFB(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key,
 										  std::vector<unsigned char> iv);
 
+    /**
+     * @brief Decrypts data using AES in CFB mode.
+     * @param in Ciphertext data.
+     * @param key Decryption key.
+     * @param iv Initialization vector.
+     * @return Decrypted plaintext.
+     */
 	std::vector<unsigned char> DecryptCFB(std::vector<unsigned char> in,
 										  std::vector<unsigned char> key,
 										  std::vector<unsigned char> iv);
 
+    /**
+     * @brief Prints a vector of bytes in hexadecimal format.
+     * @param a Vector of bytes to print.
+     */
 	void printHexVector(std::vector<unsigned char> a);
 
 private:

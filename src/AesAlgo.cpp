@@ -508,11 +508,6 @@ void AesAlgo::XorBlocks(std::vector<uint8_t> &a,
 	}
 }
 
-/**
- * @brief Prints a vector of bytes as a hexadecimal string.
- * Useful for debugging.
- * @param a The vector to print.
- */
 void AesAlgo::printHexVector(std::vector<uint8_t> a)
 {
 	for (uint16_t i = 0; i < a.size(); i++)
@@ -523,10 +518,6 @@ void AesAlgo::printHexVector(std::vector<uint8_t> a)
 
 /**
  * @brief Encrypts data using AES in ECB (Electronic Codebook) mode.
- *
- * @param in The plaintext data to encrypt.
- * @param key The encryption key.
- * @return The encrypted ciphertext.
  */
 std::vector<uint8_t> AesAlgo::EncryptECB(std::vector<uint8_t> in,
 										 std::vector<uint8_t> key)
@@ -556,10 +547,6 @@ else
 
 /**
  * @brief Decrypts data using AES in ECB (Electronic Codebook) mode.
- *
- * @param in The ciphertext data to decrypt.
- * @param key The decryption key.
- * @return The decrypted plaintext.
  */
 std::vector<uint8_t> AesAlgo::DecryptECB(std::vector<uint8_t> in,
 										 std::vector<uint8_t> key)
@@ -583,11 +570,6 @@ std::vector<uint8_t> AesAlgo::DecryptECB(std::vector<uint8_t> in,
 
 /**
  * @brief Encrypts data using AES in CBC (Cipher Block Chaining) mode.
- *
- * @param in The plaintext data to encrypt.
- * @param key The encryption key.
- * @param iv The initialization vector.
- * @return The encrypted ciphertext.
  */
 std::vector<uint8_t> AesAlgo::EncryptCBC(std::vector<uint8_t> in,
 										 std::vector<uint8_t> key,
@@ -620,11 +602,6 @@ else
 
 /**
  * @brief Decrypts data using AES in CBC (Cipher Block Chaining) mode.
- *
- * @param in The ciphertext data to decrypt.
- * @param key The decryption key.
- * @param iv The initialization vector.
- * @return The decrypted plaintext.
  */
 std::vector<uint8_t> AesAlgo::DecryptCBC(std::vector<uint8_t> in,
 										 std::vector<uint8_t> key,
@@ -652,11 +629,6 @@ std::vector<uint8_t> AesAlgo::DecryptCBC(std::vector<uint8_t> in,
 
 /**
  * @brief Encrypts data using AES in CFB (Cipher Feedback) mode.
- *
- * @param in The plaintext data to encrypt.
- * @param key The encryption key.
- * @param iv The initialization vector.
- * @return The encrypted ciphertext.
  */
 std::vector<uint8_t> AesAlgo::EncryptCFB(std::vector<uint8_t> in,
 										 std::vector<uint8_t> key,
@@ -690,11 +662,6 @@ else
 
 /**
  * @brief Decrypts data using AES in CFB (Cipher Feedback) mode.
- *
- * @param in The ciphertext data to decrypt.
- * @param key The decryption key.
- * @param iv The initialization vector.
- * @return The decrypted plaintext.
  */
 std::vector<uint8_t> AesAlgo::DecryptCFB(std::vector<uint8_t> in,
 											   std::vector<uint8_t> key,

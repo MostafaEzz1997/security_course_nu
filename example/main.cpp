@@ -1,3 +1,10 @@
+/**
+ * @file main.cpp
+ * @brief Demonstrates AES encryption and decryption in ECB, CBC, and CFB modes.
+ *
+ * Includes performance benchmarking and functional tests for AES algorithm.
+ */
+
 
 #include <iostream>
 #include <vector>
@@ -25,6 +32,11 @@ std::vector<uint8_t> getRandomPlain(unsigned int length)
     return plain;
 }
 
+/**
+ * @brief Performs a speed test for AES encryption using ECB mode.
+ * Measures performance with and without GF multiplication optimization.
+ * @return 0 on success.
+ */
 int speedTest()
 {
     const unsigned int MEGABYTE = 1024 * 1024 * sizeof(unsigned char);
@@ -63,6 +75,9 @@ int speedTest()
 }
 
 // ----------- ECB Mode Functions ------------
+/**
+ * @brief Tests AES encryption of a single block in ECB mode.
+ */
 void EncryptOneBlockECB() {
     AesAlgo aes;
 
@@ -90,6 +105,9 @@ void EncryptOneBlockECB() {
     }
 }
 
+/**
+ * @brief Tests AES encryption of an unaligned block in ECB mode with padding enabled.
+ */
 void EncryptUnalignedBlockECB() {
     AesAlgo aes(false, true);
 
@@ -119,6 +137,9 @@ void EncryptUnalignedBlockECB() {
     }
 }
 
+/**
+ * @brief Tests AES encryption and decryption of a single block in ECB mode.
+ */
 void EncryptDecryptOneBlockECB() {
     AesAlgo aes;
 
@@ -144,6 +165,9 @@ void EncryptDecryptOneBlockECB() {
     }
 }
 
+/**
+ * @brief Tests AES encryption of two blocks in ECB mode.
+ */
 void EncryptDecryptTwoBlockECB() {
     AesAlgo aes;
     
@@ -175,6 +199,9 @@ void EncryptDecryptTwoBlockECB() {
 }
 
 // ----------- CBC Mode Functions ------------
+/**
+ * @brief Tests AES encryption of two blocks in CBC mode.
+ */
 void EncryptTwoBlockCBC() {
     AesAlgo aes;
     std::vector<uint8_t> plain = {
@@ -206,6 +233,9 @@ void EncryptTwoBlockCBC() {
     }
 }
 
+/**
+ * @brief Tests AES decryption of two blocks in CBC mode.
+ */
 void DecryptTwoBlockCBC() {
     
     AesAlgo aes;
@@ -245,6 +275,9 @@ void DecryptTwoBlockCBC() {
 
 
 // ----------- CFB Mode Functions ------------
+/**
+ * @brief Tests AES encryption of two blocks in CFB mode.
+ */
 void EncryptTwoBlocksCFB() {
     
     AesAlgo aes;
@@ -280,6 +313,9 @@ void EncryptTwoBlocksCFB() {
     }
 }
 
+/**
+ * @brief Tests AES decryption of two blocks in CFB mode.
+ */
 void DecryptTwoBlocksCFB() {
     AesAlgo aes;
     std::vector<unsigned char> encrypted = {
@@ -315,21 +351,57 @@ void DecryptTwoBlocksCFB() {
 }
 
 
+/**
+ * @brief Entry point of the program.
+ * Executes all AES test functions and performance benchmark.
+ * @param argc Argument count.
+ * @param argv Argument values.
+ * @return 0 on success.
+ */
 int main(int argc, char **argv)
 {
 
+/**
+ * @brief Tests AES encryption of a single block in ECB mode.
+ */
     EncryptOneBlockECB();
+/**
+ * @brief Tests AES encryption of an unaligned block in ECB mode with padding enabled.
+ */
     EncryptUnalignedBlockECB();
 
+/**
+ * @brief Tests AES encryption and decryption of a single block in ECB mode.
+ */
     EncryptDecryptOneBlockECB();
+/**
+ * @brief Tests AES encryption of two blocks in ECB mode.
+ */
     EncryptDecryptTwoBlockECB();
 
+/**
+ * @brief Tests AES encryption of two blocks in CBC mode.
+ */
     EncryptTwoBlockCBC();
+/**
+ * @brief Tests AES decryption of two blocks in CBC mode.
+ */
     DecryptTwoBlockCBC();
 
+/**
+ * @brief Tests AES encryption of two blocks in CFB mode.
+ */
     EncryptTwoBlocksCFB();
+/**
+ * @brief Tests AES decryption of two blocks in CFB mode.
+ */
     DecryptTwoBlocksCFB();
  
+/**
+ * @brief Performs a speed test for AES encryption using ECB mode.
+ * Measures performance with and without GF multiplication optimization.
+ * @return 0 on success.
+ */
     speedTest();
     
     return 0;
