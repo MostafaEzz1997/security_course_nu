@@ -38,17 +38,26 @@ int speedTest()
 
     std::cout << "Start speedtest" << std::endl;
     srand(std::time(nullptr));
-
     std::vector<uint8_t> plain = getRandomPlain(plainLength);
 
-    AesAlgo aes(true);
-    unsigned long start = getMicroseconds();
-    std::vector<uint8_t> out = aes.EncryptECB(plain, key);
-    unsigned long delta = getMicroseconds() - start;
-
-    double speed = (double)megabytesCount / delta * MICROSECONDS;
-
-    printf("%.2f Mb/s time= %lld, \n", speed,delta);
+    {
+        // Without GF multiplication optimization
+        AesAlgo aes(true);
+        unsigned long start = getMicroseconds();
+        std::vector<uint8_t> out = aes.EncryptECB(plain, key);
+        unsigned long delta = getMicroseconds() - start;
+        double speed = (double)megabytesCount / delta * MICROSECONDS;
+        printf("Without GF multiplication optimization: %.2f Mb/s time = %1ld\n", speed, delta);
+    }
+    {
+        // with GF multiplication optimization
+        AesAlgo aes(true);
+        unsigned long start = getMicroseconds();
+        std::vector<uint8_t> out = aes.EncryptECB(plain, key);
+        unsigned long delta = getMicroseconds() - start;
+        double speed = (double)megabytesCount / delta * MICROSECONDS;
+        printf("With GF multiplication optimization:    %.2f Mb/s time = %1ld\n", speed, delta);
+    }
 
     return 0;
 }
@@ -279,15 +288,15 @@ void DecryptTwoBlocksCFB() {
 
 int main(int argc, char **argv)
 {
-    EncryptOneBlockECB();
-    EncryptDecryptOneBlockECB();
-    EncryptDecryptTwoBlockECB();
+    // EncryptOneBlockECB();
+    // EncryptDecryptOneBlockECB();
+    // EncryptDecryptTwoBlockECB();
 
-    EncryptTwoBlockCBC();
-    DecryptTwoBlockCBC();
+    // EncryptTwoBlockCBC();
+    // DecryptTwoBlockCBC();
 
-    EncryptTwoBlocksCFB();
-    DecryptTwoBlocksCFB();
+    // EncryptTwoBlocksCFB();
+    // DecryptTwoBlocksCFB();
 
     speedTest();
 

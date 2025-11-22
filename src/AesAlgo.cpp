@@ -224,12 +224,10 @@ uint8_t AesAlgo::xtime(uint8_t b) // multiply on x
  */
 void AesAlgo::MixColumns(std::array<std::array<uint8_t, Nb>, 4> &state)
 {
+	std::array<std::array<uint8_t, Nb>, 4> temp_state{};
 	// Using precomputed Galois Field multiplication tables for efficiency
-if (!gf_enable)
+	if (!gf_enable)
 	{
-
-		std::array<std::array<uint8_t, Nb>, 4> temp_state{};
-		
 		for (size_t i = 0; i < 4; ++i)
 		{
 			for (size_t k = 0; k < 4; ++k)
@@ -237,27 +235,28 @@ if (!gf_enable)
 				for (size_t j = 0; j < 4; ++j)
 				{
 					if (CMDS[i][k] == 1)
-					temp_state[i][j] ^= state[k][j];
+						temp_state[i][j] ^= state[k][j];
 					else
-					temp_state[i][j] ^= GF_MUL_TABLE[CMDS[i][k]][state[k][j]];
+						temp_state[i][j] ^= GF_MUL_TABLE[CMDS[i][k]][state[k][j]];
 				}
 			}
 		}
-		
+
 		for (size_t i = 0; i < 4; ++i)
 		{
 			state[i] = temp_state[i];
 		}
 	}
-else
+	else
 	{
 		// Same accumulation style as the table-based path, but using multiply_gf256
-		std::array<std::array<uint8_t, Nb>, 4> temp_state{};
-
-		for (std::size_t i = 0; i < 4; ++i) {
-			for (std::size_t k = 0; k < 4; ++k) {
+		for (std::size_t i = 0; i < 4; ++i)
+		{
+			for (std::size_t k = 0; k < 4; ++k)
+			{
 				const uint8_t multiplier = static_cast<uint8_t>(CMDS[i][k]);
-				for (std::size_t j = 0; j < Nb; ++j) {
+				for (std::size_t j = 0; j < Nb; ++j)
+				{
 					if (multiplier == 1)
 					{
 						temp_state[i][j] ^= state[k][j];
@@ -270,7 +269,8 @@ else
 			}
 		}
 
-		for (std::size_t i = 0; i < 4; ++i) {
+		for (std::size_t i = 0; i < 4; ++i)
+		{
 			state[i] = temp_state[i];
 		}
 	}
