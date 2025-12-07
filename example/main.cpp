@@ -3,6 +3,7 @@
  * @brief Demonstrates RSA key generation, encryption/decryption, and signing/verification.
  */
 
+#include <chrono>
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -22,8 +23,13 @@
  */
 void RunEncryptionTest(RsaAlgo &rsa, unsigned int bits) {
     std::cout << "\n=== Encryption/Decryption Test for " << bits << "-bit key ===" << std::endl;
+
     // 1. Generate a new RSA key pair for the specified bit length.
+    auto start_gen = std::chrono::high_resolution_clock::now();
     auto keys = rsa.GenerateKeys(bits);
+    auto end_gen = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> gen_time = end_gen - start_gen;
+    std::cout << "Key Generation: " << gen_time.count() << " ms" << std::endl;
 
     // 2. Create a sample message to encrypt.
     std::string message = "Hello RSA " + std::to_string(bits);
@@ -35,14 +41,22 @@ void RunEncryptionTest(RsaAlgo &rsa, unsigned int bits) {
     }
 
     // 3. Encrypt the message using the public key.
+    auto start_encrypt = std::chrono::high_resolution_clock::now();
     auto ciphertext = rsa.Encrypt(message, keys);
+    auto end_encrypt = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::micro> encrypt_time = end_encrypt - start_encrypt;
+
     // 4. Decrypt the ciphertext using the private key.
+    auto start_decrypt = std::chrono::high_resolution_clock::now();
     auto decrypted = rsa.Decrypt(ciphertext.get(), keys);
+    auto end_decrypt = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::micro> decrypt_time = end_decrypt - start_decrypt;
 
     // 5. Print the original and decrypted messages and verify correctness.
     std::cout << "Original : " << message << std::endl;
     std::cout << "Decrypted: " << decrypted << std::endl;
     std::cout << (message == decrypted ? "Result   : success" : "Result   : failure") << std::endl;
+    std::cout << "Time     : Encrypt " << encrypt_time.count() << " us | Decrypt " << decrypt_time.count() << " us" << std::endl;
 }
 
 /**
@@ -55,8 +69,13 @@ void RunEncryptionTest(RsaAlgo &rsa, unsigned int bits) {
  */
 void RunSignatureTest(RsaAlgo &rsa, unsigned int bits) {
     std::cout << "\n=== Signature Test for " << bits << "-bit key ===" << std::endl;
+
     // 1. Generate a new RSA key pair.
+    auto start_gen = std::chrono::high_resolution_clock::now();
     auto keys = rsa.GenerateKeys(bits);
+    auto end_gen = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> gen_time = end_gen - start_gen;
+    std::cout << "Key Generation: " << gen_time.count() << " ms" << std::endl;
 
     // 2. Create a sample message to sign.
     std::string message = "Signature test " + std::to_string(bits);
@@ -67,17 +86,27 @@ void RunSignatureTest(RsaAlgo &rsa, unsigned int bits) {
     }
 
     // 3. Sign the message using the private key.
+    auto start_sign = std::chrono::high_resolution_clock::now();
     auto signature = rsa.Sign(message, keys);
+    auto end_sign = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::micro> sign_time = end_sign - start_sign;
+
     // 4. Verify the signature against the original message using the public key.
+    auto start_verify = std::chrono::high_resolution_clock::now();
     bool verified = rsa.Verify(message, signature.get(), keys);
+    auto end_verify = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::micro> verify_time = end_verify - start_verify;
 
     // 5. Print the results.
     std::cout << "Message  : " << message << std::endl;
+
     // Convert the signature to a hex string for printing.
     char *sig_hex = BN_bn2hex(signature.get());
     std::cout << "Signature: " << sig_hex << std::endl;
     OPENSSL_free(sig_hex); // Free the memory allocated by BN_bn2hex.
+
     std::cout << (verified ? "Result   : verified" : "Result   : failed") << std::endl;
+    std::cout << "Time     : Sign " << sign_time.count() << " us | Verify " << verify_time.count() << " us" << std::endl;
 }
 
 /**
