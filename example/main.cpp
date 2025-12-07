@@ -1,3 +1,9 @@
+/**
+ * @file main.cpp
+ * @brief An example application demonstrating the RsaAlgo library.
+ * This program generates RSA keys of various sizes, performs encryption/decryption
+ * and signing/verification, and measures the performance of each operation.
+ */
 #include "RsaAlgo.hpp"
 
 #include <chrono>
@@ -7,6 +13,12 @@
 
 using namespace rsa;
 
+/**
+ * @brief Converts a BIGNUM to its hexadecimal string representation.
+ * @param value The BIGNUM to convert.
+ * @return A std::string containing the hex value. The string will be empty
+ *         if the conversion fails.
+ */
 std::string toHex(const BIGNUM *value) {
     char *hex = BN_bn2hex(value);
     std::string result(hex ? hex : "");
@@ -14,6 +26,13 @@ std::string toHex(const BIGNUM *value) {
     return result;
 }
 
+/**
+ * @brief A generic function to measure the execution time of any callable operation.
+ * @tparam Func The type of the callable (e.g., a lambda).
+ * @param func The callable operation to execute and time.
+ * @return A std::pair containing the result of the operation and the elapsed
+ *         time in milliseconds (as a double).
+ */
 template <typename Func>
 auto timeOperation(Func &&func) {
     const auto start = std::chrono::high_resolution_clock::now();
@@ -24,6 +43,10 @@ auto timeOperation(Func &&func) {
     return std::pair<decltype(result), double>{std::move(result), elapsedMs};
 }
 
+/**
+ * @brief Prints detailed information about an RSA key pair.
+ * @param key The RsaKeyPair to display.
+ */
 void printKeyInfo(const RsaKeyPair &key) {
     std::cout << "Key size : " << key.key_bits << " bits" << std::endl;
     std::cout << "Public exponent (e): " << toHex(key.e.get()) << std::endl;
@@ -31,6 +54,11 @@ void printKeyInfo(const RsaKeyPair &key) {
     std::cout << "Modulus (n): " << toHex(key.n.get()) << std::endl;
 }
 
+/**
+ * @brief Runs a full encryption and decryption test cycle.
+ * @param key The RSA key pair to use for the test.
+ * @param message The plaintext message to encrypt and decrypt.
+ */
 void runEncryptionDecryption(const RsaKeyPair &key, const std::string &message) {
     std::cout << "\n=== Encryption/Decryption Test for " << key.key_bits << "-bit key ===" << std::endl;
     printKeyInfo(key);
@@ -50,6 +78,11 @@ void runEncryptionDecryption(const RsaKeyPair &key, const std::string &message) 
     std::cout << "Decryption time (ms): " << decryptMs << std::endl;
 }
 
+/**
+ * @brief Runs a full digital signature and verification test cycle.
+ * @param key The RSA key pair to use for the test.
+ * @param message The message to sign and verify.
+ */
 void runSignature(const RsaKeyPair &key, const std::string &message) {
     std::cout << "\n=== Signature Test for " << key.key_bits << "-bit key ===" << std::endl;
     printKeyInfo(key);
@@ -67,6 +100,10 @@ void runSignature(const RsaKeyPair &key, const std::string &message) {
     std::cout << "Verification time (ms): " << verifyMs << std::endl;
 }
 
+/**
+ * @brief The main entry point of the application.
+ * Runs tests for multiple RSA key sizes and handles exceptions.
+ */
 int main() {
     try {
         RsaKeyPair key128 = RsaAlgo::generateKeyPair(128);
