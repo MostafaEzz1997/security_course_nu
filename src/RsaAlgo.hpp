@@ -31,6 +31,9 @@ public:
         std::string q; ///< The second prime factor of n (private).
     };
 
+    /// @brief A smart pointer for managing BIGNUM resources, used in the public API.
+    using BN_ptr = std::unique_ptr<BIGNUM, decltype(&BN_free)>;
+
     /**
      * @brief Constructs an RsaAlgo instance.
      * @param prime_checks The number of Miller-Rabin primality test rounds to perform.
@@ -53,11 +56,11 @@ public:
      * @brief Encrypts a message using the public key (c = m^e mod n).
      * @param message The raw string data to encrypt.
      * @param public_key A KeyPair struct containing the public key components (n and e).
-     * @return A raw pointer to a BIGNUM object holding the ciphertext. The caller is responsible for freeing this memory with BN_free().
+     * @return A smart pointer (BN_ptr) to a BIGNUM object holding the ciphertext.
      * @throws std::invalid_argument if the message is larger than the modulus `n`.
      * @throws std::runtime_error on OpenSSL allocation or computation failures.
      */
-    BIGNUM* Encrypt(const std::string &message, const KeyPair &public_key);
+    BN_ptr Encrypt(const std::string &message, const KeyPair &public_key);
 
     /**
      * @brief Decrypts a ciphertext using the private key (m = c^d mod n).
@@ -72,11 +75,11 @@ public:
      * @brief Signs a message using the private key (s = m^d mod n).
      * @param message The raw string data to sign.
      * @param private_key A KeyPair struct containing the private key components (n and d).
-     * @return A raw pointer to a BIGNUM object holding the signature. The caller is responsible for freeing this memory with BN_free().
+     * @return A smart pointer (BN_ptr) to a BIGNUM object holding the signature.
      * @throws std::invalid_argument if the message is larger than the modulus `n`.
      * @throws std::runtime_error on OpenSSL allocation or computation failures.
      */
-    BIGNUM* Sign(const std::string &message, const KeyPair &private_key);
+    BN_ptr Sign(const std::string &message, const KeyPair &private_key);
 
     /**
      * @brief Verifies a signature against a message using the public key.
@@ -91,8 +94,6 @@ private:
     unsigned int _prime_checks; ///< Number of Miller-Rabin rounds for primality testing.
     std::mt19937_64 _rng;       ///< Random number generator for non-crypto purposes.
 
-    /// @brief A smart pointer for managing BIGNUM resources.
-    using BN_ptr = std::unique_ptr<BIGNUM, decltype(&BN_free)>;
     /// @brief A smart pointer for managing BN_CTX resources.
     using CTX_ptr = std::unique_ptr<BN_CTX, decltype(&BN_CTX_free)>;
 

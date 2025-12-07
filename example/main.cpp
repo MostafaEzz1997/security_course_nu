@@ -35,9 +35,7 @@ void RunEncryptionTest(RsaAlgo &rsa, unsigned int bits) {
     }
 
     // 3. Encrypt the message using the public key.
-    // The result is a raw BIGNUM* which must be managed.
-    // A unique_ptr with a custom deleter (BN_free) ensures it's freed automatically.
-    std::unique_ptr<BIGNUM, decltype(&BN_free)> ciphertext(rsa.Encrypt(message, keys), BN_free);
+    auto ciphertext = rsa.Encrypt(message, keys);
     // 4. Decrypt the ciphertext using the private key.
     auto decrypted = rsa.Decrypt(ciphertext.get(), keys);
 
@@ -69,8 +67,7 @@ void RunSignatureTest(RsaAlgo &rsa, unsigned int bits) {
     }
 
     // 3. Sign the message using the private key.
-    // The returned BIGNUM* is managed by a unique_ptr to prevent memory leaks.
-    std::unique_ptr<BIGNUM, decltype(&BN_free)> signature(rsa.Sign(message, keys), BN_free);
+    auto signature = rsa.Sign(message, keys);
     // 4. Verify the signature against the original message using the public key.
     bool verified = rsa.Verify(message, signature.get(), keys);
 

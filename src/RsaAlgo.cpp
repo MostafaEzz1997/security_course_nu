@@ -71,7 +71,7 @@ RsaAlgo::KeyPair RsaAlgo::GenerateKeys(unsigned int key_bits, unsigned int min_d
 /**
  * @brief Implements the RSA encryption algorithm (c = m^e mod n).
  */
-BIGNUM* RsaAlgo::Encrypt(const std::string &message, const KeyPair &public_key) {
+RsaAlgo::BN_ptr RsaAlgo::Encrypt(const std::string &message, const KeyPair &public_key) {
     // Convert the message string and hex key components into BIGNUM objects.
     BN_ptr m = BytesToBigNum(std::vector<uint8_t>(message.begin(), message.end()));
     BN_ptr n = LoadFromHex(public_key.n);
@@ -86,8 +86,7 @@ BIGNUM* RsaAlgo::Encrypt(const std::string &message, const KeyPair &public_key) 
     BN_ptr out(BN_new(), BN_free);
     BN_mod_exp(out.get(), m.get(), e.get(), n.get(), ctx.get());
 
-    // Release ownership of the BIGNUM to the caller
-    return out.release();
+    return out;
 }
 
 /**
@@ -111,7 +110,7 @@ std::string RsaAlgo::Decrypt(const BIGNUM *ciphertext, const KeyPair &private_ke
 /**
  * @brief Implements the RSA signing algorithm (s = m^d mod n).
  */
-BIGNUM* RsaAlgo::Sign(const std::string &message, const KeyPair &private_key) {
+RsaAlgo::BN_ptr RsaAlgo::Sign(const std::string &message, const KeyPair &private_key) {
     // Convert the message string and hex key components into BIGNUM objects.
     BN_ptr m = BytesToBigNum(std::vector<uint8_t>(message.begin(), message.end()));
     BN_ptr n = LoadFromHex(private_key.n);
@@ -126,8 +125,7 @@ BIGNUM* RsaAlgo::Sign(const std::string &message, const KeyPair &private_key) {
     BN_ptr sig(BN_new(), BN_free);
     BN_mod_exp(sig.get(), m.get(), d.get(), n.get(), ctx.get());
 
-    // Release ownership of the BIGNUM to the caller
-    return sig.release();
+    return sig;
 }
 
 /**
