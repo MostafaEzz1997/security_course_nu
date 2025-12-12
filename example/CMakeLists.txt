@@ -1,13 +1,8 @@
-cmake_minimum_required(VERSION 3.5)
-
-project(example CXX)
-
 set(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src/)
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+# Let's name the executable 'ecc_example'
+add_executable(ecc_example ${SOURCE_FILES})
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
-
-target_link_libraries(${PROJECT_NAME} PRIVATE AesAlgo)
-
+# Link against the ecc_lib. Because ecc_lib has a PUBLIC dependency on Boost
+# and PUBLIC include directories, this one line is enough to configure everything.
+target_link_libraries(ecc_example PRIVATE ecc_lib)

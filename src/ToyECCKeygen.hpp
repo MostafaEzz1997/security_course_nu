@@ -1,60 +1,66 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
+
+#include <openssl/bn.h>
 
 class ToyECC {
 public:
     struct KeyPair {
-        std::int64_t privateKey;
+        // BIGNUMs are heap-allocated, so we use pointers.
+        BIGNUM* privateKey;
         std::string publicKey;   // SEC1 compressed
     };
 
-    // Constructor with optional curve parameters
-    ToyECC(std::int64_t p  = 17,
-           std::int64_t a  = 2,
-           std::int64_t b  = 2,
-           std::int64_t n  = 38,
-           std::int64_t gx = 5,
-           std::int64_t gy = 1);
+    ToyECC(const char* p_hex,
+           const char* a_hex,
+           const char* b_hex,
+           const char* n_hex,
+           const char* gx_hex,
+           const char* gy_hex);
+
+    ~ToyECC();
+
+    // Disable copy/move to prevent issues with raw pointers.
+    ToyECC(const ToyECC&) = delete;
+    ToyECC& operator=(const ToyECC&) = delete;
 
     // Public API
-    KeyPair generateKeyPair();
+    KeyPair generateKeyPair(); // Note: Caller is responsible for freeing KeyPair.privateKey
 
 private:
     // Curve parameters
-    std::int64_t P;
-    std::int64_t A;
-    std::int64_t B;
-    std::int64_t N;
+    BIGNUM *P, *A, *B, *N, *Gx, *Gy; // NOLINT
 
-    // Base point
-    std::int64_t Gx;
-    std::int64_t Gy;
+    // OpenSSL context for efficient BIGNUM operations
+    BN_CTX* ctx_;
 
     struct Point {
-        std::int64_t x;
-        std::int64_t y;
+        BIGNUM* x;
+        BIGNUM* y;
         bool infinity;
 
-        Point(std::int64_t x_=0, std::int64_t y_=0, bool inf=true);
+        Point(BIGNUM* x_ = nullptr, BIGNUM* y_ = nullptr, bool inf = true);
     };
 
     // ECC internals
-    Point basePoint() const;
+    Point basePoint(); // Not const anymore due to BIGNUM allocation
     Point infinity() const;
 
-    Point scalarMultiply(std::int64_t k, const Point& P0);
+    // Encoding
+    Point scalarMultiply(const BIGNUM* k, const Point& P0);
     Point pointAdd(const Point& P1, const Point& P2);
     Point pointDouble(const Point& P1);
 
-    // Encoding
-    std::vector<std::uint8_t> encodePointCompressed(const Point& P1);
+    // Memory management for Points
+    Point newPoint(const BIGNUM* x, const BIGNUM* y, bool inf = false);
+    void freePoint(Point& p);
 
+    std::vector<std::uint8_t> encodePointCompressed(const Point& P1);
     std::string base64Encode(const std::vector<uint8_t>& data);
 
     // Helpers
-    std::int64_t mod(std::int64_t x, std::int64_t m) const;
-    std::int64_t modInverse(std::int64_t a, std::int64_t m) const;
-    std::int64_t randomScalar(std::int64_t min, std::int64_t max);
+    BIGNUM* randomScalar();
 };

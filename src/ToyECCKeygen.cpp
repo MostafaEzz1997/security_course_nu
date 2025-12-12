@@ -1,164 +1,181 @@
-#include <random>
 #include <stdexcept>
 #include <iostream>
+#include <vector>
 
 #include "ToyECCKeygen.hpp"
 
 // ---------------- Constructor ----------------
-ToyECC::ToyECC(std::int64_t p,
-               std::int64_t a,
-               std::int64_t b,
-               std::int64_t n,
-               std::int64_t gx,
-               std::int64_t gy)
-    : P(p), A(a), B(b), N(n), Gx(gx), Gy(gy) {}
+ToyECC::ToyECC(const char* p_hex, const char* a_hex, const char* b_hex,
+               const char* n_hex, const char* gx_hex, const char* gy_hex) {
+    P = BN_new(); A = BN_new(); B = BN_new();
+    N = BN_new(); Gx = BN_new(); Gy = BN_new();
+    ctx_ = BN_CTX_new();
+
+    if (!ctx_ || !P || !A || !B || !N || !Gx || !Gy) {
+        throw std::runtime_error("Failed to allocate BIGNUMs");
+    }
+
+    BN_hex2bn(&P, p_hex);
+    BN_hex2bn(&A, a_hex);
+    BN_hex2bn(&B, b_hex);
+    BN_hex2bn(&N, n_hex);
+    BN_hex2bn(&Gx, gx_hex);
+    BN_hex2bn(&Gy, gy_hex);
+}
+
+ToyECC::~ToyECC() {
+    BN_free(P); BN_free(A); BN_free(B);
+    BN_free(N); BN_free(Gx); BN_free(Gy);
+    BN_CTX_free(ctx_);
+}
 
 // ---------------- Point ctor ----------------
-ToyECC::Point::Point(std::int64_t x_, std::int64_t y_, bool inf)
+ToyECC::Point::Point(BIGNUM* x_, BIGNUM* y_, bool inf)
     : x(x_), y(y_), infinity(inf) {}
 
 // ---------------- Public API ----------------
 ToyECC::KeyPair ToyECC::generateKeyPair() {
-    std::int64_t d = randomScalar(1, N - 1);
+    BIGNUM* d = randomScalar();
     Point Q = scalarMultiply(d, basePoint());
 
     KeyPair kp;
     kp.privateKey = d;
     kp.publicKey  = base64Encode(encodePointCompressed(Q));
+
+    freePoint(Q);
     return kp;
 }
 
 // ---------------- Base point ----------------
-ToyECC::Point ToyECC::basePoint() const {
-    return Point(Gx, Gy, false);
+ToyECC::Point ToyECC::basePoint() {
+    return newPoint(Gx, Gy, false);
 }
 
 ToyECC::Point ToyECC::infinity() const {
-    return Point(0, 0, true);
+    return Point(nullptr, nullptr, true);
+}
+
+// ---------------- Point Memory Management ----------------
+ToyECC::Point ToyECC::newPoint(const BIGNUM* x, const BIGNUM* y, bool inf) {
+    if (inf) return infinity();
+    BIGNUM* new_x = BN_dup(x);
+    BIGNUM* new_y = BN_dup(y);
+    if (!new_x || !new_y) throw std::runtime_error("Failed to duplicate BIGNUM for Point.");
+    return Point(new_x, new_y, false);
+}
+
+void ToyECC::freePoint(Point& p) {
+    if (p.x) BN_free(p.x);
+    if (p.y) BN_free(p.y);
+    p.x = nullptr;
+    p.y = nullptr;
+    p.infinity = true;
 }
 
 // ---------------- ECC arithmetic ----------------
-ToyECC::Point ToyECC::scalarMultiply(std::int64_t k, const Point& P0) {
-    if (k % N == 0 || P0.infinity) {
+ToyECC::Point ToyECC::scalarMultiply(const BIGNUM* k, const Point& P0) {
+    if (BN_is_zero(k) || P0.infinity) {
         return infinity();
     }
 
     Point result = infinity();
-    Point addend = P0;
-    std::int64_t kk = mod(k, N);
+    Point addend = newPoint(P0.x, P0.y);
 
-    while (kk > 0) {
-        if (kk & 1) {
-            result = pointAdd(result, addend);
+    for (int i = 0; i < BN_num_bits(k); ++i) {
+        if (BN_is_bit_set(k, i)) {
+            Point temp = pointAdd(result, addend);
+            freePoint(result);
+            result = temp;
         }
-        addend = pointDouble(addend);
-        kk >>= 1;
+        Point temp = pointDouble(addend);
+        freePoint(addend);
+        addend = temp;
     }
+
+    freePoint(addend);
     return result;
 }
 
 ToyECC::Point ToyECC::pointAdd(const Point& P1, const Point& P2) {
+    if (P1.infinity) return newPoint(P2.x, P2.y);
+    if (P2.infinity) return newPoint(P1.x, P1.y);
 
-    // If the first point is the point at infinity (identity element),
-    // return the second point:  ∞ + P2 = P2
-    if (P1.infinity) 
-        return P2;
+    BN_CTX_start(ctx_);
+    BIGNUM *lambda = BN_CTX_get(ctx_);
+    BIGNUM *x3 = BN_CTX_get(ctx_);
+    BIGNUM *y3 = BN_CTX_get(ctx_);
+    BIGNUM *temp = BN_CTX_get(ctx_);
 
-    // If the second point is the point at infinity,
-    // return the first point:  P1 + ∞ = P1
-    if (P2.infinity) 
-        return P1;
-
-    // Check if P2 is the inverse of P1.
-    // This happens when:
-    //   x1 == x2  AND  y1 + y2 ≡ 0 (mod P)
-    // In this case, the line between them is vertical
-    // and the result is the point at infinity.
-    if (P1.x == P2.x && mod(P1.y + P2.y, P) == 0) {
+    // Check for P1 == -P2
+    BN_mod_add(temp, P1.y, P2.y, P, ctx_);
+    if (BN_cmp(P1.x, P2.x) == 0 && BN_is_zero(temp)) {
+        BN_CTX_end(ctx_);
         return infinity();
     }
 
-    // Slope of the line (lambda) used in point addition formula
-    std::int64_t lambda;
-
-    // If the two points are identical, we are performing point doubling:
-    //   P1 + P1 = 2P1
-    // This uses a different formula (tangent line),
-    // so delegate to pointDouble().
-    if (P1.x == P2.x && P1.y == P2.y) {
+    if (BN_cmp(P1.x, P2.x) == 0 && BN_cmp(P1.y, P2.y) == 0) {
+        BN_CTX_end(ctx_);
         return pointDouble(P1);
-    } 
-    else {
-        // Compute numerator of slope:
-        //   y2 - y1 (mod P)
-        std::int64_t num = mod(P2.y - P1.y, P);
-
-        // Compute denominator of slope:
-        //   x2 - x1 (mod P)
-        std::int64_t den = mod(P2.x - P1.x, P);
-
-        // Compute slope:
-        //   lambda = (y2 - y1) / (x2 - x1) (mod P)
-        // Division modulo P is done by multiplying with the modular inverse
-        lambda = mod(num * modInverse(den, P), P);
     }
 
-    // Compute x-coordinate of the resulting point:
-    //   x3 = lambda^2 - x1 - x2 (mod P)
-    std::int64_t x3 = mod(lambda * lambda - P1.x - P2.x, P);
+    // Calculate lambda = (y2 - y1) / (x2 - x1) mod P
+    BIGNUM *num = BN_CTX_get(ctx_);
+    BIGNUM *den = BN_CTX_get(ctx_);
+    BN_mod_sub(num, P2.y, P1.y, P, ctx_);
+    BN_mod_sub(den, P2.x, P1.x, P, ctx_);
+    BN_mod_inverse(den, den, P, ctx_);
+    BN_mod_mul(lambda, num, den, P, ctx_);
 
-    // Compute y-coordinate of the resulting point:
-    //   y3 = lambda * (x1 - x3) - y1 (mod P)
-    std::int64_t y3 = mod(lambda * (P1.x - x3) - P1.y, P);
+    // Calculate x3 = lambda^2 - x1 - x2 mod P
+    BN_mod_sqr(x3, lambda, P, ctx_);
+    BN_mod_sub(x3, x3, P1.x, P, ctx_);
+    BN_mod_sub(x3, x3, P2.x, P, ctx_);
 
-    // Return the resulting point P3 = (x3, y3)
-    return Point(x3, y3, false);
+    // Calculate y3 = lambda * (x1 - x3) - y1 mod P
+    BN_mod_sub(temp, P1.x, x3, P, ctx_);
+    BN_mod_mul(y3, lambda, temp, P, ctx_);
+    BN_mod_sub(y3, y3, P1.y, P, ctx_);
+
+    Point result = newPoint(x3, y3);
+    BN_CTX_end(ctx_);
+    return result;
 }
 
 
 ToyECC::Point ToyECC::pointDouble(const Point& P1) {
-
-    // If P1 is the point at infinity, then:
-    //   2 * ∞ = ∞
-    //
-    // If y == 0, the tangent at P1 is vertical.
-    // A vertical line intersects the curve at infinity,
-    // so the result of doubling is the point at infinity.
-    if (P1.infinity || P1.y == 0) {
+    if (P1.infinity || BN_is_zero(P1.y)) {
         return infinity();
     }
 
-    // Compute the numerator of the slope (lambda) for point doubling:
-    //   3*x1^2 + A   (mod P)
-    //
-    // This comes from the derivative of the curve equation
-    // y^2 = x^3 + A*x + B
-    std::int64_t num = mod(3 * P1.x * P1.x + A, P);
+    BN_CTX_start(ctx_);
+    BIGNUM *lambda = BN_CTX_get(ctx_);
+    BIGNUM *x3 = BN_CTX_get(ctx_);
+    BIGNUM *y3 = BN_CTX_get(ctx_);
+    BIGNUM *num = BN_CTX_get(ctx_);
+    BIGNUM *den = BN_CTX_get(ctx_);
 
-    // Compute the denominator of the slope:
-    //   2*y1   (mod P)
-    //
-    // This corresponds to the derivative of y^2
-    std::int64_t den = mod(2 * P1.y, P);
+    // Calculate lambda = (3*x1^2 + A) / (2*y1) mod P
+    BN_mod_sqr(num, P1.x, P, ctx_); // num = x1^2 mod P
+    BN_mul_word(num, 3);            // num = (x1^2 mod P) * 3
+    BN_mod_add(num, num, A, P, ctx_);
+    BN_mul_word(den, 2);            // den = 2
+    BN_mul(den, den, P1.y, ctx_);
+    BN_mod_inverse(den, den, P, ctx_);
+    BN_mod_mul(lambda, num, den, P, ctx_);
 
-    // Compute the slope (lambda) of the tangent line at P1:
-    //   lambda = (3*x1^2 + A) / (2*y1)  (mod P)
-    //
-    // Division modulo P is performed by multiplying with
-    // the modular inverse of the denominator
-    std::int64_t lambda = mod(num * modInverse(den, P), P);
+    // Calculate x3 = lambda^2 - 2*x1 mod P
+    BN_mod_sqr(x3, lambda, P, ctx_);
+    BN_mod_sub(x3, x3, P1.x, P, ctx_);
+    BN_mod_sub(x3, x3, P1.x, P, ctx_);
 
-    // Compute the x-coordinate of the doubled point:
-    //   x3 = lambda^2 - 2*x1   (mod P)
-    std::int64_t x3 = mod(lambda * lambda - 2 * P1.x, P);
+    // Calculate y3 = lambda * (x1 - x3) - y1 mod P
+    BN_mod_sub(y3, P1.x, x3, P, ctx_);
+    BN_mod_mul(y3, lambda, y3, P, ctx_);
+    BN_mod_sub(y3, y3, P1.y, P, ctx_);
 
-    // Compute the y-coordinate of the doubled point:
-    //   y3 = lambda * (x1 - x3) - y1   (mod P)
-    std::int64_t y3 = mod(lambda * (P1.x - x3) - P1.y, P);
-
-    // Return the resulting point:
-    //   P3 = 2 * P1 = (x3, y3)
-    return Point(x3, y3, false);
+    Point result = newPoint(x3, y3);
+    BN_CTX_end(ctx_);
+    return result;
 }
 
 
@@ -168,18 +185,21 @@ std::vector<std::uint8_t> ToyECC::encodePointCompressed(const Point& P1) {
         throw std::runtime_error("Cannot encode point at infinity");
     }
 
-    std::cout << "Encoding point (" << P1.x << ", " << P1.y << ")\n";
+    // SEC1 compressed format: 1 byte prefix + 32 bytes for X-coordinate
+    std::vector<std::uint8_t> encoded(33);
+    encoded[0] = BN_is_odd(P1.y) ? 0x03 : 0x02;
 
-    std::uint8_t prefix = (P1.y % 2 == 0) ? 0x02 : 0x03;
-    return {
-        prefix,
-        static_cast<std::uint8_t>(P1.x)
-    };
+    // Export the 256-bit X-coordinate to a 32-byte array (big-endian)
+    BN_bn2binpad(P1.x, encoded.data() + 1, 32);
+
+    return encoded;
 }
 
 std::string ToyECC::base64Encode(const std::vector<uint8_t>& data)
 {
-    static const char* table =
+    // This implementation is fine and doesn't need to change.
+    // For production, using OpenSSL's EVP_EncodeBlock is better.
+    const char* table =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     std::string out;
@@ -200,37 +220,10 @@ std::string ToyECC::base64Encode(const std::vector<uint8_t>& data)
 
 
 // ---------------- Helpers ----------------
-std::int64_t ToyECC::mod(std::int64_t x, std::int64_t m) const {
-    std::int64_t r = x % m;
-    return (r < 0) ? r + m : r;
-}
-
-std::int64_t ToyECC::modInverse(std::int64_t a, std::int64_t m) const {
-    std::int64_t t = 0, newt = 1;
-    std::int64_t r = m, newr = mod(a, m);
-
-    while (newr != 0) {
-        std::int64_t q = r / newr;
-
-        std::int64_t tmp = newt;
-        newt = t - q * newt;
-        t = tmp;
-
-        tmp = newr;
-        newr = r - q * newr;
-        r = tmp;
-    }
-
-    if (r > 1) {
-        throw std::runtime_error("No modular inverse");
-    }
-    if (t < 0) t += m;
-    return t;
-}
-
-std::int64_t ToyECC::randomScalar(std::int64_t min, std::int64_t max) {
-    static std::random_device rd;
-    static std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<std::int64_t> dist(min, max);
-    return dist(gen);
+BIGNUM* ToyECC::randomScalar() {
+    BIGNUM* r = BN_new();
+    if (!r) throw std::runtime_error("Failed to allocate BIGNUM for random scalar.");
+    // Generate a random number in the range [1, N-1]
+    BN_rand_range(r, N);
+    return r;
 }
