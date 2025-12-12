@@ -8,10 +8,11 @@
 
 // ECIES-style output package (ECDH + HKDF-SHA256 + AES-256-GCM)
 struct EciesCiphertext {
-    std::vector<unsigned char> ephPublicKeyUncompressed; // SEC1: 0x04 || X || Y  (sender pubkey used for ECDH)
-    std::vector<unsigned char> nonce;                    // 12 bytes (GCM)
-    std::vector<unsigned char> ciphertext;               // encrypted payload
-    std::vector<unsigned char> tag;                      // 16 bytes auth tag
+    std::vector<unsigned char> ephPublicKeyUncompressed;    // SEC1: 0x04 || X || Y  (sender pubkey used for ECDH)
+    std::vector<unsigned char> senderPublicKeyUncompressed; // OPTIONAL identity pubkey (static)
+    std::vector<unsigned char> nonce;                       // 12 bytes (GCM)
+    std::vector<unsigned char> ciphertext;                  // encrypted payload
+    std::vector<unsigned char> tag;                         // 16 bytes auth tag
 };
 
 class EciesCipher {

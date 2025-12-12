@@ -82,12 +82,7 @@ int main()
         // --------------------------------------------------
         // 6) Decrypt
         // --------------------------------------------------
-        std::vector<unsigned char> decrypted = ecies.decrypt(
-            receiverKeys.privateKey,
-            ct,
-            aad
-        );
-
+        std::vector<unsigned char> decrypted = ecies.decrypt(receiverKeys.privateKey, ct, aad);
         printHex("Decrypted plaintext", decrypted);
 
         // --------------------------------------------------
