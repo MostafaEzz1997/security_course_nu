@@ -30,13 +30,6 @@ public:
     // Public API
     KeyPair generateKeyPair(); // Note: Caller is responsible for freeing KeyPair.privateKey
 
-private:
-    // Curve parameters
-    BIGNUM *P, *A, *B, *N, *Gx, *Gy; // NOLINT
-
-    // OpenSSL context for efficient BIGNUM operations
-    BN_CTX* ctx_;
-
     struct Point {
         BIGNUM* x;
         BIGNUM* y;
@@ -45,22 +38,28 @@ private:
         Point(BIGNUM* x_ = nullptr, BIGNUM* y_ = nullptr, bool inf = true);
     };
 
-    // ECC internals
-    Point basePoint(); // Not const anymore due to BIGNUM allocation
-    Point infinity() const;
-
-    // Encoding
+    // Public ECC internals for use by other classes like ElGamal
+    Point basePoint();
     Point scalarMultiply(const BIGNUM* k, const Point& P0);
     Point pointAdd(const Point& P1, const Point& P2);
     Point pointDouble(const Point& P1);
 
-    // Memory management for Points
+    // Public memory management for Points
     Point newPoint(const BIGNUM* x, const BIGNUM* y, bool inf = false);
     void freePoint(Point& p);
 
+    // Public helpers
+    BIGNUM* randomScalar();
+
+private:
+    // Curve parameters
+    BIGNUM *P, *A, *B, *N, *Gx, *Gy; // NOLINT
+
+    // OpenSSL context for efficient BIGNUM operations
+    BN_CTX* ctx_;
+
+    Point infinity() const;
+
     std::vector<std::uint8_t> encodePointCompressed(const Point& P1);
     std::string base64Encode(const std::vector<uint8_t>& data);
-
-    // Helpers
-    BIGNUM* randomScalar();
 };

@@ -155,11 +155,13 @@ ToyECC::Point ToyECC::pointDouble(const Point& P1) {
     BIGNUM *den = BN_CTX_get(ctx_);
 
     // Calculate lambda = (3*x1^2 + A) / (2*y1) mod P
+    BIGNUM* three = BN_CTX_get(ctx_);
+    BN_set_word(three, 3);
+
     BN_mod_sqr(num, P1.x, P, ctx_); // num = x1^2 mod P
-    BN_mul_word(num, 3);            // num = (x1^2 mod P) * 3
+    BN_mod_mul(num, num, three, P, ctx_); // num = 3 * x1^2 mod P
     BN_mod_add(num, num, A, P, ctx_);
-    BN_mul_word(den, 2);            // den = 2
-    BN_mul(den, den, P1.y, ctx_);
+    BN_mod_add(den, P1.y, P1.y, P, ctx_); // den = (y1 + y1) mod P which is 2*y1 mod P
     BN_mod_inverse(den, den, P, ctx_);
     BN_mod_mul(lambda, num, den, P, ctx_);
 

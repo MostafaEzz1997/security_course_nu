@@ -1,7 +1,9 @@
 #include <iostream>
 #include <iomanip>
+#include <chrono>
 
 #include "ToyECCKeygen.hpp"
+#include "ElGamal.hpp"
 
 int main() {
     try {
@@ -23,9 +25,63 @@ int main() {
         std::cout << "Private key (hex): 0x" << private_key_hex << "\n";
         std::cout << "Public key (Base64 compressed): " << kp.publicKey << "\n";
 
-        // Clean up memory
+        std::cout << "\n--- ElGamal Encryption/Decryption Test ---\n";
+
+        // The message to be encrypted
+        std::string original_message = "This is a secret message for testing ElGamal!";
+        std::cout << "Original Message: " << original_message << std::endl;
+
+        // Get the public key as a Point object
+        ToyECC::Point publicKeyPoint = ecc.scalarMultiply(kp.privateKey, ecc.basePoint());
+
+        // Initialize ElGamal with our ECC instance
+        ElGamal elgamal(ecc);
+
+        // --- Encryption ---
+        auto start_encrypt = std::chrono::high_resolution_clock::now();
+        ElGamal::Ciphertext ciphertext = elgamal.encrypt(original_message, publicKeyPoint);
+        auto end_encrypt = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> encrypt_time = end_encrypt - start_encrypt;
+
+        std::cout << "Encryption successful. Ciphertext (C1, C2):" << std::endl;
+        char* c1x_hex = BN_bn2hex(ciphertext.C1.x);
+        char* c1y_hex = BN_bn2hex(ciphertext.C1.y);
+        char* c2x_hex = BN_bn2hex(ciphertext.C2.x);
+        char* c2y_hex = BN_bn2hex(ciphertext.C2.y);
+        std::cout << "  C1.x: " << c1x_hex << std::endl;
+        std::cout << "  C1.y: " << c1y_hex << std::endl;
+        std::cout << "  C2.x: " << c2x_hex << std::endl;
+        std::cout << "  C2.y: " << c2y_hex << std::endl;
+        OPENSSL_free(c1x_hex);
+        OPENSSL_free(c1y_hex);
+        OPENSSL_free(c2x_hex);
+        OPENSSL_free(c2y_hex);
+
+        // --- Decryption ---
+        auto start_decrypt = std::chrono::high_resolution_clock::now();
+        bool decryption_ok = elgamal.decrypt(ciphertext, original_message, kp.privateKey);
+        auto end_decrypt = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> decrypt_time = end_decrypt - start_decrypt;
+
+        std::cout << "Decryption verification status: " << (decryption_ok ? "SUCCESS" : "FAILURE") << std::endl;
+        if (decryption_ok) {
+            std::cout << "Successfully decrypted message: \"" << original_message << "\"" << std::endl;
+        } else {
+            std::cout << "Failed to recover the original message." << std::endl;
+        }
+
+        // --- Performance Results ---
+        std::cout << "\n--- Performance ---\n";
+        std::cout << "Encryption time: " << encrypt_time.count() << " ms\n";
+        std::cout << "Decryption time: " << decrypt_time.count() << " ms\n";
+
+        // --- Final Cleanup ---
+        // Free all allocated resources at the very end.
         OPENSSL_free(private_key_hex);
         BN_free(kp.privateKey);
+        ecc.freePoint(publicKeyPoint);
+        ecc.freePoint(ciphertext.C1);
+        ecc.freePoint(ciphertext.C2);
 
     } catch (const std::exception& e) {
         std::cerr << "An error occurred: " << e.what() << std::endl;
