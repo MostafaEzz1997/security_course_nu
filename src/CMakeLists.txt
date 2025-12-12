@@ -1,6 +1,7 @@
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/ToyECCKeygen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ElGamal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ECDSA.cpp
 )
 
 # Define the library target. Let's name it 'ecc_lib' to be explicit.

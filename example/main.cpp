@@ -4,6 +4,7 @@
 
 #include "ToyECCKeygen.hpp"
 #include "ElGamal.hpp"
+#include "ECDSA.hpp"
 
 int main() {
     try {
@@ -74,6 +75,41 @@ int main() {
         std::cout << "\n--- Performance ---\n";
         std::cout << "Encryption time: " << encrypt_time.count() << " ms\n";
         std::cout << "Decryption time: " << decrypt_time.count() << " ms\n";
+        std::chrono::duration<double, std::milli> sign_time;
+        std::chrono::duration<double, std::milli> verify_time;
+
+        std::cout << "\n--- ECDSA Signing/Verification Test ---\n";
+        std::string sign_message = "This message will be signed by ECDSA.";
+        std::cout << "Message to sign: \"" << sign_message << "\"" << std::endl;
+
+        // Initialize ECDSA handler
+        ECDSA ecdsa(ecc);
+
+        // --- Signing ---
+        auto start_sign = std::chrono::high_resolution_clock::now();
+        ECDSA::Signature signature = ecdsa.sign(sign_message, kp.privateKey);
+        auto end_sign = std::chrono::high_resolution_clock::now();
+        sign_time = end_sign - start_sign;
+        char* r_hex = BN_bn2hex(signature.r);
+        char* s_hex = BN_bn2hex(signature.s);
+        std::cout << "Signing successful. Signature (r, s):" << std::endl;
+        std::cout << "  r: " << r_hex << std::endl;
+        std::cout << "  s: " << s_hex << std::endl;
+        OPENSSL_free(r_hex);
+        OPENSSL_free(s_hex);
+
+        // --- Verification ---
+        auto start_verify = std::chrono::high_resolution_clock::now();
+        bool signature_ok = ecdsa.verify(sign_message, signature, publicKeyPoint);
+        auto end_verify = std::chrono::high_resolution_clock::now();
+        verify_time = end_verify - start_verify;
+        std::cout << "Signature verification status: " << (signature_ok ? "SUCCESS" : "FAILURE") << std::endl;
+        BN_free(signature.r);
+        BN_free(signature.s);
+
+        // --- Updated Performance Results ---
+        std::cout << "Signing time: " << sign_time.count() << " ms\n";
+        std::cout << "Verification time: " << verify_time.count() << " ms\n";
 
         // --- Final Cleanup ---
         // Free all allocated resources at the very end.

@@ -50,6 +50,9 @@ public:
 
     // Public helpers
     BIGNUM* randomScalar();
+    // Getters for curve parameters needed by other classes
+    const BIGNUM* getCurveOrder() const { return N; }
+    BN_CTX* getCtx() const { return ctx_; }
 
 private:
     // Curve parameters
