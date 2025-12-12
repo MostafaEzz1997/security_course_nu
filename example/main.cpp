@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <iomanip>
+#include <chrono>
 
 #include "EccKeyGenerator.hpp"
 #include "EciesCipher.hpp"
@@ -71,7 +72,26 @@ int main()
         // --------------------------------------------------
         // 5) Encrypt
         // --------------------------------------------------
+        // Measure encryption time (single run)
+        const auto enc_t0 = std::chrono::high_resolution_clock::now();
         EciesCiphertext ct = ecies.encrypt(plaintext, aad);
+        const auto enc_t1 = std::chrono::high_resolution_clock::now();
+        const auto enc_us = std::chrono::duration_cast<std::chrono::microseconds>(enc_t1 - enc_t0).count();
+        std::cout << "Encryption time (single): " << enc_us << " us\n";
+
+        // Optional: measure average encryption time over multiple iterations to reduce noise
+        constexpr int ENC_BENCH_ITERS = 200; // adjust as needed
+        std::size_t sink = 0; // prevents the compiler from optimizing the loop away
+        const auto enc_bench_t0 = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < ENC_BENCH_ITERS; ++i) {
+            EciesCiphertext tmp = ecies.encrypt(plaintext, aad);
+            sink ^= tmp.ciphertext.size();
+        }
+        const auto enc_bench_t1 = std::chrono::high_resolution_clock::now();
+        const auto enc_bench_us = std::chrono::duration_cast<std::chrono::microseconds>(enc_bench_t1 - enc_bench_t0).count();
+        std::cout << "Encryption time (avg over " << ENC_BENCH_ITERS << "): "
+                  << (enc_bench_us / static_cast<double>(ENC_BENCH_ITERS)) << " us\n";
+        (void)sink;
 
         printHex("Sender public key (getter)", ecies.getSenderPublicKeyUncompressed());
         printHex("Sender public key (in ciphertext)", ct.ephPublicKeyUncompressed);
@@ -82,7 +102,28 @@ int main()
         // --------------------------------------------------
         // 6) Decrypt
         // --------------------------------------------------
+        // Measure decryption time (single run)
+        const auto dec_t0 = std::chrono::high_resolution_clock::now();
         std::vector<unsigned char> decrypted = ecies.decrypt(receiverKeys.privateKey, ct, aad);
+        const auto dec_t1 = std::chrono::high_resolution_clock::now();
+        const auto dec_us = std::chrono::duration_cast<std::chrono::microseconds>(dec_t1 - dec_t0).count();
+        std::cout << "Decryption time (single): " << dec_us << " us\n";
+
+        // Optional: measure average decryption time over multiple iterations to reduce noise
+        constexpr int DEC_BENCH_ITERS = 200; // adjust as needed
+        std::size_t dec_sink = 0; // prevents optimizing away
+        const auto dec_bench_t0 = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < DEC_BENCH_ITERS; ++i) {
+            // Note: decrypt must use a valid ciphertext+tag; reuse the same ct for timing.
+            std::vector<unsigned char> tmp = ecies.decrypt(receiverKeys.privateKey, ct, aad);
+            dec_sink ^= tmp.size();
+        }
+        const auto dec_bench_t1 = std::chrono::high_resolution_clock::now();
+        const auto dec_bench_us = std::chrono::duration_cast<std::chrono::microseconds>(dec_bench_t1 - dec_bench_t0).count();
+        std::cout << "Decryption time (avg over " << DEC_BENCH_ITERS << "): "
+                  << (dec_bench_us / static_cast<double>(DEC_BENCH_ITERS)) << " us\n";
+        (void)dec_sink;
+
         printHex("Decrypted plaintext", decrypted);
 
         // --------------------------------------------------

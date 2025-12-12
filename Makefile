@@ -1,14 +1,3 @@
-# Top-level Makefile to drive CMake for the AES project
-# Usage:
-#   make                   # configure+build library + example (Release, C++17)
-#   make aes               # build library only
-#   make BUILD_TYPE=Debug
-#   make CXX_STANDARD=20   # configure+build with a different C++ standard
-#   make doc               # generate documentation with Doxygen
-#   make clean
-#   make distclean
-#   make rebuild
-
 CMAKE ?= cmake
 RM ?= rm -rf
 
@@ -33,10 +22,12 @@ all: $(BUILD_DIR)
 	@echo "=== Building full project (library + example) ==="
 	@$(CMAKE) --build $(BUILD_DIR) $(CMAKE_BUILD_FLAGS)
 
-# Build only AES library
-aes: $(BUILD_DIR)
-	@echo "=== Building AES library only ==="
-	@$(CMAKE) --build $(BUILD_DIR) $(CMAKE_BUILD_FLAGS) --target AesAlgo
+.PHONY: all aes clean distclean rebuild doc clean-doc run
+
+# Build and run the example binary
+run: all
+	@echo "=== Running example: ./$(BUILD_DIR)/example/example ==="
+	@./$(BUILD_DIR)/example/example
 
 # Configure the top-level CMake project
 $(BUILD_DIR):
