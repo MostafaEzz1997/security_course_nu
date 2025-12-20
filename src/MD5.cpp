@@ -10,15 +10,15 @@ namespace crypto {
 
 namespace {
 
-// MD5 auxiliary functions
+/**
+ * @brief MD5 auxiliary nonlinear functions (F, G, H, I).
+ */
 inline uint32_t F(uint32_t x, uint32_t y, uint32_t z) { return (x & y) | (~x & z); }
 inline uint32_t G(uint32_t x, uint32_t y, uint32_t z) { return (x & z) | (y & ~z); }
 inline uint32_t H(uint32_t x, uint32_t y, uint32_t z) { return x ^ y ^ z; }
 inline uint32_t I(uint32_t x, uint32_t y, uint32_t z) { return y ^ (x | ~z); }
 
-inline uint32_t rotate_left(uint32_t x, uint32_t n) {
-    return (x << n) | (x >> (32 - n));
-}
+inline uint32_t rotate_left(uint32_t x, uint32_t n) { return (x << n) | (x >> (32 - n)); }
 
 // Table of sine-based constants (T-values)
 constexpr uint32_t T[] = {
@@ -32,7 +32,7 @@ constexpr uint32_t T[] = {
     0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 };
 
-// Shift amounts for each round
+/// Shift amounts for each operation step across the four rounds.
 constexpr uint32_t S[] = {
      7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22, // Round 1
      5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20, // Round 2
@@ -44,103 +44,167 @@ constexpr uint32_t S[] = {
 
 MD5::MD5() { init(); }
 
+/** Reset the running bit count and set registers to the defined MD5 constants. */
 void MD5::init() {
-    count = 0;
-    state[0] = 0x67452301;
-    state[1] = 0xefcdab89;
-    state[2] = 0x98badcfe;
-    state[3] = 0x10325476;
+    bitCount_ = 0;
+    registers_[0] = 0x67452301;
+    registers_[1] = 0xefcdab89;
+    registers_[2] = 0x98badcfe;
+    registers_[3] = 0x10325476;
+    blockBuffer_.fill(0);
 }
 
+/**
+ * @brief Ingest arbitrary-length data into the algorithm state.
+ *
+ * This accumulates bytes into a 64-byte buffer; whenever the buffer fills,
+ * a 512-bit transform is executed. The total bit count is tracked to support
+ * length padding during finalization.
+ */
 void MD5::update(const unsigned char *input, std::size_t inputLen) {
-    std::size_t index = (count >> 3) & 0x3F;
-    count += static_cast<uint64_t>(inputLen) << 3;
+    std::size_t bufferIndex = (bitCount_ >> 3) & 0x3F; // current byte offset in 64-byte block
+    bitCount_ += static_cast<uint64_t>(inputLen) << 3; // track total bits processed
 
-    std::size_t partLen = 64 - index;
-    std::size_t i = 0;
+    std::size_t spaceInBuffer = 64 - bufferIndex;
+    std::size_t copyIndex = 0;
 
-    if (inputLen >= partLen) {
-        std::memcpy(&buffer[index], input, partLen);
-        transform(buffer);
+    // If incoming data can complete the current buffer, process it first
+    if (inputLen >= spaceInBuffer) {
+        std::memcpy(blockBuffer_.data() + bufferIndex, input, spaceInBuffer);
+        transform(blockBuffer_.data());
+        copyIndex = spaceInBuffer;
 
-        for (i = partLen; i + 63 < inputLen; i += 64) {
-            transform(&input[i]);
+        // Process additional complete 64-byte blocks directly from the input
+        while (copyIndex + 64 <= inputLen) {
+            transform(reinterpret_cast<const uint8_t *>(input + copyIndex));
+            copyIndex += 64;
         }
-        index = 0;
-
+        bufferIndex = 0; // reset for remaining bytes
     }
 
-    std::memcpy(&buffer[index], &input[i], inputLen - i);
+    // Copy any leftover bytes into the buffer
+    std::memcpy(blockBuffer_.data() + bufferIndex, input + copyIndex, inputLen - copyIndex);
 }
 
+/**
+ * @brief Finalize the digest computation and produce a hexadecimal string.
+ *
+ * The finalizeDigest call performs bit padding, length appending,
+ * block processing, and raw digest extraction.
+ */
 std::string MD5::hexdigest() {
-    static const unsigned char PADDING[64] = { 0x80 };
+    uint8_t digest[16] = {0};
+    finalizeDigest(digest);
 
-    unsigned char bits[8];
-    for (int i = 0; i < 8; ++i) {
-        bits[i] = static_cast<unsigned char>((count >> (8 * i)) & 0xFF);
-    }
-
-    std::size_t index = (count >> 3) & 0x3F;
-    std::size_t padLen = (index < 56) ? (56 - index) : (120 - index);
-    update(PADDING, padLen);
-    update(bits, 8);
-
-    static const char hex[] = "0123456789abcdef";
+    static const char hexDigits[] = "0123456789abcdef";
     std::string out;
     out.reserve(32);
 
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            uint8_t byte = (state[i] >> (j * 8)) & 0xFF;
-            out.push_back(hex[byte >> 4]);
-            out.push_back(hex[byte & 0x0F]);
-        }
+    for (uint8_t byte : digest) {
+        out.push_back(hexDigits[byte >> 4]);
+        out.push_back(hexDigits[byte & 0x0F]);
     }
 
     init();
     return out;
 }
 
+/**
+ * @brief Apply MD5 padding to the buffered message.
+ *
+ * Step 1: Append a single 1 bit (0x80) followed by zero bits until the message
+ * length is 64 bits shy of a multiple of 512 bits.
+ * Step 2: Append the original message length in bits as a 64-bit little-endian integer.
+ */
+void MD5::padMessage() {
+    static const uint8_t PADDING[64] = {0x80};
+
+    const uint64_t originalBitCount = bitCount_; // preserve message length before padding
+    std::size_t bufferIndex = (bitCount_ >> 3) & 0x3F;
+    // If buffer has < 56 bytes, pad to 56. Otherwise, pad to fill the current
+    // block and continue padding into the next block until its 56-byte mark.
+    // The 120 comes from (64 - bufferIndex) + 56.
+    std::size_t padLen = (bufferIndex < 56) ? (56 - bufferIndex) : (120 - bufferIndex);
+
+    update(PADDING, padLen);
+
+    uint8_t lengthBytes[8];
+    encodeLength(lengthBytes, originalBitCount);
+    update(lengthBytes, sizeof(lengthBytes));
+}
+
+/**
+ * @brief Encode the total bit length into eight little-endian bytes.
+ */
+void MD5::encodeLength(uint8_t (&lengthBytes)[8], uint64_t bitLength) const {
+    for (int i = 0; i < 8; ++i) {
+        lengthBytes[i] = static_cast<uint8_t>((bitLength >> (8 * i)) & 0xFF);
+    }
+}
+
+/**
+ * @brief Finish hashing: pad message, process remaining blocks, serialize state.
+ */
+void MD5::finalizeDigest(uint8_t (&digest)[16]) {
+    padMessage();
+
+    // Serialize the 32-bit registers into a 16-byte, little-endian array
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            digest[i * 4 + j] = static_cast<uint8_t>((registers_[i] >> (j * 8)) & 0xFF);
+        }
+    }
+}
+
+/**
+ * @brief Process a single 512-bit message block through four MD5 rounds.
+ *
+ * The block is split into 16 words, then four rounds of 16 operations apply the MD5
+ * nonlinear functions with distinct message scheduling, constants, and left rotations.
+ * Results are accumulated into the running registers.
+ */
 void MD5::transform(const uint8_t block[64]) {
-    uint32_t a = state[0], b = state[1], c = state[2], d = state[3];
+    uint32_t a = registers_[0];
+    uint32_t b = registers_[1];
+    uint32_t c = registers_[2];
+    uint32_t d = registers_[3];
     uint32_t x[16];
 
+    // Break 512-bit block into sixteen 32-bit little-endian words
     for (int i = 0, j = 0; i < 16; ++i, j += 4) {
-        x[i] = static_cast<uint32_t>(block[j]) |
-               (static_cast<uint32_t>(block[j + 1]) << 8) |
-               (static_cast<uint32_t>(block[j + 2]) << 16) |
-               (static_cast<uint32_t>(block[j + 3]) << 24);
+        x[i] = static_cast<uint32_t>(block[j]) | (static_cast<uint32_t>(block[j + 1]) << 8) |
+               (static_cast<uint32_t>(block[j + 2]) << 16) | (static_cast<uint32_t>(block[j + 3]) << 24);
     }
-    // Main loop for all 64 steps.
+
     for (int i = 0; i < 64; ++i) {
-        uint32_t f, k;
+        uint32_t f;
+        uint32_t g;
 
         if (i < 16) { // Round 1
             f = F(b, c, d);
-            k = i;
+            g = i;
         } else if (i < 32) { // Round 2
             f = G(b, c, d);
-            k = (1 + 5 * i) % 16;
+            g = (5 * i + 1) % 16;
         } else if (i < 48) { // Round 3
             f = H(b, c, d);
-            k = (5 + 3 * i) % 16;
+            g = (3 * i + 5) % 16;
         } else { // Round 4
             f = I(b, c, d);
-            k = (7 * i) % 16;
+            g = (7 * i) % 16;
         }
 
         uint32_t temp = d;
         d = c;
         c = b;
-        b = b + rotate_left(a + f + x[k] + T[i], S[i]);
+        b = b + rotate_left(a + f + T[i] + x[g], S[i]);
         a = temp;
     }
 
-    state[0] += a;
-    state[1] += b;
-    state[2] += c;
-    state[3] += d;
+    registers_[0] += a;
+    registers_[1] += b;
+    registers_[2] += c;
+    registers_[3] += d;
 }
 
 } // namespace crypto

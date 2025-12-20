@@ -41,12 +41,38 @@ class MD5 {
     std::string hexdigest();
 
   private:
+    /**
+     * @brief Reset the internal state to the initial MD5 constants.
+     */
     void init();
+
+    /**
+     * @brief Process a single 512-bit block of the message.
+     * @param block The 64-byte block to transform into the internal digest state.
+     */
     void transform(const uint8_t block[64]);
 
-    uint32_t state[4];
-    uint64_t count;
-    uint8_t buffer[64];
+    /**
+     * @brief Append the MD5 padding bits followed by the message length.
+     */
+    void padMessage();
+
+    /**
+     * @brief Encode a bit length into a little-endian 64-bit array.
+     * @param lengthBytes Output buffer of eight bytes.
+     * @param bitLength Total length of the original message in bits.
+     */
+    void encodeLength(uint8_t (&lengthBytes)[8], uint64_t bitLength) const;
+
+    /**
+     * @brief Finish the digest computation and write the raw bytes.
+     * @param digest Output buffer of 16 bytes holding the final hash.
+     */
+    void finalizeDigest(uint8_t (&digest)[16]);
+
+    std::array<uint32_t, 4> registers_{}; ///< Internal MD5 buffers A, B, C, D.
+    uint64_t bitCount_{};                 ///< Total number of processed bits.
+    std::array<uint8_t, 64> blockBuffer_{}; ///< Accumulated bytes before processing.
 };
 
 } // namespace crypto
